@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blackhole / Infinite Reverb</title>
+  <style>
+    :root {
+      --bg: #04050a;
+      --panel: #0b0f17;
+      --panel-2: #111826;
+      --border: #223047;
+      --text: #e8eef7;
+      --muted: #93a4bd;
+      --accent: #7c3aed;
+      --accent-2: #22d3ee;
+      --danger: #ef4444;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+      --radius: 14px;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 15% 20%, rgba(124, 58, 237, 0.16), transparent 32%),
+        radial-gradient(circle at 85% 15%, rgba(34, 211, 238, 0.12), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.10), transparent 36%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    header {
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 3vw, 2.3rem);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 860px;
+    }
+
+    .warning {
+      margin-top: 10px;
+      color: #fca5a5;
+      font-size: 0.92rem;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(2, 4, 10, 0.82);
+      backdrop-filter: blur(10px);
+    }
+
+    .overlay-card {
+      width: min(560px, 100%);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      text-align: center;
+    }
+
+    .overlay-card h2 {
+      margin: 0 0 10px;
+      font-size: 1.35rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .overlay-card p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(124, 58, 237, 0.65);
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.14);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), #4f46e5);
+      border-color: transparent;
+      color: white;
+      font-weight: 700;
+      padding: 12px 18px;
+    }
+
+    .toggle.active {
+      background: linear-gradient(135deg, var(--accent), #4f46e5);
+      border-color: transparent;
+      color: white;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 10px 24px rgba(124, 58, 237, 0.22);
+    }
+
+    .toggle.danger.active {
+      background: linear-gradient(135deg, #b91c1c, var(--danger));
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .transport {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .transport button {
+      min-width: 112px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .control {
+      background: var(--panel-2);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 13px 13px 15px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 0.78rem;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .control output {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.86rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 13px 0 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .visualizer-panel {
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 220px;
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at center, rgba(124, 58, 237, 0.08), transparent 45%),
+        #04050a;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 0.86rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 1.2em;
+      color: #fcd34d;
+      font-size: 0.92rem;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        width: calc(100% - 20px);
+      }
+
+      canvas {
+        height: 170px;
+      }
+
+      .transport button {
+        flex: 1 1 calc(50% - 10px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Blackhole / Infinite Reverb</h1>
+      <p class="subtitle">
+        Live microphone processing into an extremely long, modulated, pitch-shifted reverb cloud.
+        The design uses a feedback-delay network with high feedback, damping filters, modulation,
+        and a granular pitch-shifting pre-stage.
+      </p>
+      <p class="warning">
+        Use headphones. Loudspeaker monitoring may cause severe acoustic feedback.
+        A secure context such as localhost or HTTPS is required for microphone access.
+      </p>
+    </header>
+
+    <section class="panel transport">
+      <button id="powerBtn" class="toggle" aria-pressed="false">Power</button>
+      <button id="freezeBtn" class="toggle danger" aria-pressed="false">Freeze / Infinite Hold</button>
+      <button id="infiniteBtn" class="toggle" aria-pressed="false">Infinite Decay</button>
+      <button id="muteDryBtn" class="toggle" aria-pressed="false">Mute Dry</button>
+      <button id="clearBtn">Clear Reverb Buffer</button>
+    </section>
+
+    <section class="panel visualizer-panel">
+      <canvas id="viz" aria-label="Reverb spectrum visualizer"></canvas>
+    </section>
+
+    <section class="panel">
+      <p class="section-title">Parameters</p>
+      <div class="grid">
+        <div class="control">
+          <label for="inputGain">Input Gain <output id="inputGainVal">100%</output></label>
+          <input id="inputGain" type="range" min="0" max="200" step="1" value="100" />
+        </div>
+
+        <div class="control">
+          <label for="mix">Mix <output id="mixVal">80%</output></label>
+          <input id="mix" type="range" min="0" max="100" step="1" value="80" />
+        </div>
+
+        <div class="control">
+          <label for="outputGain">Output <output id="outputGainVal">80%</output></label>
+          <input id="outputGain" type="range" min="0" max="200" step="1" value="80" />
+        </div>
+
+        <div class="control">
+          <label for="decay">Decay / Infinite <output id="decayVal">85%</output></label>
+          <input id="decay" type="range" min="0" max="100" step="1" value="85" />
+        </div>
+
+        <div class="control">
+          <label for="feedback">Feedback <output id="feedbackVal">80%</output></label>
+          <input id="feedback" type="range" min="0" max="100" step="1" value="80" />
+        </div>
+
+        <div class="control">
+          <label for="modRate">Modulation Rate <output id="modRateVal">0.30 Hz</output></label>
+          <input id="modRate" type="range" min="0" max="5" step="0.01" value="0.30" />
+        </div>
+
+        <div class="control">
+          <label for="modDepth">Modulation Depth <output id="modDepthVal">8.0 ms</output></label>
+          <input id="modDepth" type="range" min="0" max="30" step="0.1" value="8.0" />
+        </div>
+
+        <div class="control">
+          <label for="pitch">Pitch Shift <output id="pitchVal">0 st</output></label>
+          <input id="pitch" type="range" min="-12" max="12" step="1" value="0" />
+        </div>
+
+        <div class="control">
+          <label for="highpass">High-Pass <output id="highpassVal">80 Hz</output></label>
+          <input id="highpass" type="range" min="20" max="1000" step="1" value="80" />
+        </div>
+
+        <div class="control">
+          <label for="lowpass">Low-Pass <output id="lowpassVal">9000 Hz</output></label>
+          <input id="lowpass" type="range" min="200" max="18000" step="1" value="9000" />
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top: 16px;">
+      <p class="section-title">Presets</p>
+      <div class="presets">
+        <button data-preset="Void Choir">Void Choir</button>
+        <button data-preset="Sci-Fi Engine">Sci-Fi Engine</button>
+        <button data-preset="Meditation Sphere">Meditation Sphere</button>
+        <button data-preset="Pitch Abyss">Pitch Abyss</button>
+        <button data-preset="Clean Infinite">Clean Infinite</button>
+      </div>
+      <p class="footer-note">
+        Decay at 100% forces infinite feedback. Freeze mutes the input and sustains the existing cloud.
+        Clear Reverb Buffer resets the delay network if low-frequency energy accumulates.
+      </p>
+    </section>
+  </div>
+
+  <div id="overlay" class="overlay">
+    <div class="overlay-card">
+      <h2>Enter the Blackhole</h2>
+      <p>
+        This application processes live microphone input. Click below to initialize the audio engine
+        and grant microphone permission.
+      </p>
+      <button id="startBtn" class="primary">Enable Microphone</button>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const WORKLET_CODE = `
+        class BlackholeProcessor extends AudioWorkletProcessor {
+          constructor() {
+            super();
+
+            const sr = sampleRate;
+            this.sr = sr;
+            this.N = 8;
+            this.twoPi = Math.PI * 2;
+
+            this.delayBufLen = Math.min(
+              524288,
+              Math.max(48000, Math.floor(sr * 2.5))
+            );
+
+            const times = [0.127, 0.181, 0.239, 0.307, 0.383, 0.479, 0.593, 0.727];
+            const maxBase = Math.max(
+              1000,
+              this.delayBufLen - Math.floor(sr * 0.08) - 1024
+            );
+
+            this.lines = [];
+
+            for (let i = 0; i < this.N; i++) {
+              const base = Math.min(
+                Math.floor(times[i] * sr),
+                Math.max(1000, maxBase - i * 512)
+              );
+
+              this.lines.push({
+                buf: new Float32Array(this.delayBufLen),
+                write: Math.floor(Math.random() * this.delayBufLen),
+                base: base,
+                modPhase: Math.random() * this.twoPi,
+                modMult: 0.73 + i * 0.121,
+                lp: 0,
+                hpX: 0,
+                hpY: 0
+              });
+            }
+
+            this.damped = new Float32Array(this.N);
+
+            this.inGains = new Float32Array([
+              0.60, -0.52, 0.48, -0.44, 0.38, -0.34, 0.30, -0.27
+            ]);
+
+            this.panL = new Float32Array(this.N);
+            this.panR = new Float32Array(this.N);
+
+            for (let i = 0; i < this.N; i++) {
+              const pan = (i / (this.N - 1)) * 2 - 1;
+              const angle = ((pan + 1) * Math.PI) / 4;
+              this.panL[i] = Math.cos(angle);
+              this.panR[i] = Math.sin(angle);
+            }
+
+            this.pitchLen = 1;
+            while (this.pitchLen < sr * 0.35) {
+              this.pitchLen *= 2;
+            }
+
+            this.pitchBuf = new Float32Array(this.pitchLen);
+            this.pitchWrite = 0;
+            this.pitchPhase = 0;
+            this.pitchBase = Math.floor(sr * 0.08);
+            this.pitchRange = Math.floor(sr * 0.04);
+
+            this.target = {
+              inputGain: 1.0,
+              mix: 0.8,
+              outputGain: 0.8,
+              decay: 0.85,
+              feedback: 0.8,
+              modRate: 0.3,
+              modDepth: 8.0,
+              pitch: 0.0,
+              highpass: 80.0,
+              lowpass: 9000.0,
+              freeze: 0,
+              infinite: 0,
+              muteDry: 0
+            };
+
+            this.current = Object.assign(
+              {
+                freezeAmt: 0,
+                infiniteAmt: 0,
+                muteDryAmt: 0
+              },
+              this.target
+            );
+
+            this.port.onmessage = (e) => {
+              const d = e.data;
+              if (!d) return;
+
+              if (d.type === 'params') {
+                Object.assign(this.target, d.params);
+              } else if (d.type === 'clear') {
+                for (let i = 0; i < this.N; i++) {
+                  this.lines[i].buf.fill(0);
+                  this.lines[i].lp = 0;
+                  this.lines[i].hpX = 0;
+                  this.lines[i].hpY = 0;
+                }
+                this.pitchBuf.fill(0);
+              }
+            };
+          }
+
+          readPitch(delay) {
+            const len = this.pitchLen;
+            let pos = this.pitchWrite - delay;
+
+            while (pos < 0) pos += len;
+            while (pos >= len) pos -= len;
+
+            const i0 = Math.floor(pos);
+            const i1 = (i0 + 1) % len;
+            const frac = pos - i0;
+
+            return this.pitchBuf[i0] * (1 - frac) + this.pitchBuf[i1] * frac;
+          }
+
+          pitchProcess(x, semis) {
+            const len = this.pitchLen;
+            this.pitchBuf[this.pitchWrite] = x;
+
+            let out;
+
+            if (Math.abs(semis) > 0.08) {
+              const ratio = Math.pow(2, semis / 12);
+              const diff = Math.abs(ratio - 1);
+              const range = this.pitchRange;
+              const period = range / Math.max(diff, 0.00075);
+              const inc = 1 / period;
+
+              this.pitchPhase += inc;
+              if (this.pitchPhase >= 1) this.pitchPhase -= 1;
+
+              const p1 = this.pitchPhase;
+              let p2 = p1 + 0.5;
+              if (p2 >= 1) p2 -= 1;
+
+              let d1;
+              let d2;
+
+              if (ratio > 1) {
+                d1 = this.pitchBase + (1 - p1) * range;
+                d2 = this.pitchBase + (1 - p2) * range;
+              } else {
+                d1 = this.pitchBase + p1 * range;
+                d2 = this.pitchBase + p2 * range;
+              }
+
+              const s1 = Math.sin(Math.PI * p1);
+              const s2 = Math.sin(Math.PI * p2);
+              const w1 = s1 * s1;
+              const w2 = s2 * s2;
+
+              out = this.readPitch(d1) * w1 + this.readPitch(d2) * w2;
+            } else {
+              this.pitchPhase = 0;
+              out = this.readPitch(this.pitchBase + this.pitchRange * 0.5);
+            }
+
+            this.pitchWrite++;
+            if (this.pitchWrite >= len) this.pitchWrite = 0;
+
+            return out;
+          }
+
+          process(inputs, outputs) {
+            const output = outputs[0];
+            if (!output || !output[0]) return true;
+
+            const outL = output[0];
+            const outR = output.length > 1 ? output[1] : output[0];
+
+            const input = inputs[0];
+            const inCh = input && input.length > 0 ? input[0] : null;
+            const blockSize = outL.length;
+
+            const c = this.current;
+            const t = this.target;
+
+            const smooth = 0.10;
+
+            c.inputGain += (t.inputGain - c.inputGain) * smooth;
+            c.mix += (t.mix - c.mix) * smooth;
+            c.outputGain += (t.outputGain - c.outputGain) * smooth;
+            c.decay += (t.decay - c.decay) * smooth;
+            c.feedback += (t.feedback - c.feedback) * smooth;
+            c.modRate += (t.modRate - c.modRate) * smooth;
+            c.modDepth += (t.modDepth - c.modDepth) * smooth;
+            c.pitch += (t.pitch - c.pitch) * smooth;
+            c.highpass += (t.highpass - c.highpass) * smooth;
+            c.lowpass += (t.lowpass - c.lowpass) * smooth;
+
+            c.freezeAmt += ((t.freeze ? 1 : 0) - c.freezeAmt) * 0.04;
+            c.infiniteAmt += ((t.infinite ? 1 : 0) - c.infiniteAmt) * 0.04;
+            c.muteDryAmt += ((t.muteDry ? 1 : 0) - c.muteDryAmt) * 0.08;
+
+            const lpFreq = Math.min(this.sr * 0.49, Math.max(80, c.lowpass));
+            const hpFreq = Math.min(this.sr * 0.49, Math.max(3, c.highpass));
+
+            const lpCoeff = 1 - Math.exp((-this.twoPi * lpFreq) / this.sr);
+            const hpAlpha = 1 / (1 + (this.twoPi * hpFreq) / this.sr);
+
+            const depthSamples = c.modDepth * 0.001 * this.sr;
+            const modRate = c.modRate;
+
+            const freezeAmt = c.freezeAmt;
+            const infiniteAmt = Math.max(c.infiniteAmt, freezeAmt);
+            const decayInfinite = c.decay > 0.995 ? 1 : 0;
+            const forceInfinite = infiniteAmt > 0.02 || decayInfinite === 1;
+
+            let baseFb = 0.65 + 0.349 * c.decay;
+            if (decayInfinite) baseFb = 1.0;
+
+            const fbScale = 0.60 + 0.40 * c.feedback;
+            let fb = baseFb * fbScale;
+
+            if (forceInfinite) {
+              fb = fb * (1 - infiniteAmt) + 1.0 * infiniteAmt;
+            }
+
+            if (decayInfinite && infiniteAmt < 0.02) {
+              fb = 1.0;
+            }
+
+            fb = Math.min(1.0, Math.max(0, fb));
+
+            const dryMute = Math.max(freezeAmt, c.muteDryAmt);
+            const twoOverN = 2 / this.N;
+
+            for (let s = 0; s < blockSize; s++) {
+              let x = 0;
+              if (inCh) x = inCh[s] || 0;
+
+              const pitchOut = this.pitchProcess(x, c.pitch);
+              const reverbIn = pitchOut * c.inputGain * 0.55 * (1 - freezeAmt);
+
+              let sum = 0;
+
+              for (let i = 0; i < this.N; i++) {
+                const line = this.lines[i];
+
+                line.modPhase += (this.twoPi * modRate * line.modMult) / this.sr;
+                if (line.modPhase > this.twoPi) line.modPhase -= this.twoPi;
+
+                const mod = Math.sin(line.modPhase) * depthSamples;
+                let readPos = line.write - line.base - mod;
+                const len = this.delayBufLen;
+
+                while (readPos < 0) readPos += len;
+                while (readPos >= len) readPos -= len;
+
+                const i0 = Math.floor(readPos);
+                const i1 = (i0 + 1) % len;
+                const frac = readPos - i0;
+
+                const y = line.buf[i0] * (1 - frac) + line.buf[i1] * frac;
+
+                line.lp += lpCoeff * (y - line.lp);
+                const lpY = line.lp;
+
+                const hpY = hpAlpha * (line.hpY + lpY - line.hpX);
+                line.hpX = lpY;
+                line.hpY = hpY;
+
+                this.damped[i] = hpY;
+                sum += hpY;
+              }
+
+              let wetL = 0;
+              let wetR = 0;
+
+              for (let i = 0; i < this.N; i++) {
+                const line = this.lines[i];
+                const v = this.damped[i];
+
+                let m = v - twoOverN * sum;
+                m *= fb;
+
+                m = Math.tanh(m * 1.5) / 1.5;
+
+                let writeVal = reverbIn * this.inGains[i] + m;
+
+                if (writeVal > 1.4) writeVal = 1.4;
+                else if (writeVal < -1.4) writeVal = -1.4;
+
+                line.buf[line.write] = writeVal;
+                line.write++;
+                if (line.write >= this.delayBufLen) line.write = 0;
+
+                wetL += v * this.panL[i];
+                wetR += v * this.panR[i];
+              }
+
+              const mix = Math.min(1, Math.max(0, c.mix));
+              const dryG = Math.sqrt(1 - mix) * (1 - dryMute) * c.inputGain;
+              const wetG = Math.sqrt(mix);
+
+              let l = x * dryG + wetL * wetG * 0.62;
+              let r = x * dryG + wetR * wetG * 0.62;
+
+              l *= c.outputGain;
+              r *= c.outputGain;
+
+              outL[s] = Math.tanh(l);
+              outR[s] = Math.tanh(r);
+            }
+
+            return true;
+          }
+        }
+
+        registerProcessor('blackhole-processor', BlackholeProcessor);
+      `;
+
+      const PRESETS = {
+        "Void Choir": {
+          inputGain: 110,
+          mix: 85,
+          outputGain: 80,
+          decay: 97,
+          feedback: 88,
+          modRate: 0.22,
+          modDepth: 11,
+          pitch: 5,
+          highpass: 120,
+          lowpass: 7500
+        },
+        "Sci-Fi Engine": {
+          inputGain: 120,
+          mix: 90,
+          outputGain: 75,
+          decay: 100,
+          feedback: 95,
+          modRate: 0.65,
+          modDepth: 18,
+          pitch: -7,
+          highpass: 60,
+          lowpass: 5200
+        },
+        "Meditation Sphere": {
+          inputGain: 90,
+          mix: 75,
+          outputGain: 85,
+          decay: 92,
+          feedback: 75,
+          modRate: 0.08,
+          modDepth: 5,
+          pitch: 0,
+          highpass: 150,
+          lowpass: 9000
+        },
+        "Pitch Abyss": {
+          inputGain: 100,
+          mix: 95,
+          outputGain: 70,
+          decay: 100,
+          feedback: 100,
+          modRate: 0.40,
+          modDepth: 22,
+          pitch: -12,
+          highpass: 90,
+          lowpass: 4500
+        },
+        "Clean Infinite": {
+          inputGain: 100,
+          mix: 65,
+          outputGain: 90,
+          decay: 99,
+          feedback: 70,
+          modRate: 0.15,
+          modDepth: 4,
+          pitch: 0,
+          highpass: 80,
+          lowpass: 12000
+        }
+      };
+
+      let audioCtx = null;
+      let workletNode = null;
+      let analyser = null;
+      let micStream = null;
+      let started = false;
+      let powered = false;
+      let vizStarted = false;
+      let vizData = null;
+
+      const params = {
+        inputGain: 1.0,
+        mix: 0.8,
+        outputGain: 0.8,
+        decay: 0.85,
+        feedback: 0.8,
+        modRate: 0.3,
+        modDepth: 8.0,
+        pitch: 0.0,
+        highpass: 80.0,
+        lowpass: 9000.0,
+        freeze: 0,
+        infinite: 0,
+        muteDry: 0
+      };
+
+      const $ = (id) => document.getElementById(id);
+
+      const canvas = $("viz");
+      const g2d = canvas.getContext("2d");
+
+      function setStatus(message) {
+        $("status").textContent = message;
+      }
+
+      function setToggle(button, active) {
+        button.classList.toggle("active", Boolean(active));
+        button.setAttribute("aria-pressed", String(Boolean(active)));
+      }
+
+      function sendParams() {
+        if (!workletNode) return;
+        workletNode.port.postMessage({
+          type: "params",
+          params: Object.assign({}, params)
+        });
+      }
+
+      function updateLabels() {
+        $("inputGainVal").textContent = $("inputGain").value + "%";
+        $("mixVal").textContent = $("mix").value + "%";
+        $("outputGainVal").textContent = $("outputGain").value + "%";
+        $("decayVal").textContent = $("decay").value + "%";
+        $("feedbackVal").textContent = $("feedback").value + "%";
+        $("modRateVal").textContent = parseFloat($("modRate").value).toFixed(2) + " Hz";
+        $("modDepthVal").textContent = parseFloat($("modDepth").value).toFixed(1) + " ms";
+
+        const pitch = parseInt($("pitch").value, 10);
+        $("pitchVal").textContent = (pitch > 0 ? "+" : "") + pitch + " st";
+
+        $("highpassVal").textContent = parseInt($("highpass").value, 10) + " Hz";
+        $("lowpassVal").textContent = parseInt($("lowpass").value, 10) + " Hz";
+      }
+
+      function uiToParams() {
+        params.inputGain = parseFloat($("inputGain").value) / 100;
+        params.mix = parseFloat($("mix").value) / 100;
+        params.outputGain = parseFloat($("outputGain").value) / 100;
+        params.decay = parseFloat($("decay").value) / 100;
+        params.feedback = parseFloat($("feedback").value) / 100;
+        params.modRate = parseFloat($("modRate").value);
+        params.modDepth = parseFloat($("modDepth").value);
+        params.pitch = parseFloat($("pitch").value);
+        params.highpass = parseFloat($("highpass").value);
+        params.lowpass = parseFloat($("lowpass").value);
+
+        updateLabels();
+        sendParams();
+      }
+
+      function applyPreset(name) {
+        const preset = PRESETS[name];
+        if (!preset) return;
+
+        Object.keys(preset).forEach((key) => {
+          const el = $(key);
+          if (el) el.value = preset[key];
+        });
+
+        params.freeze = 0;
+        params.infinite = 0;
+        params.muteDry = 0;
+
+        setToggle($("freezeBtn"), false);
+        setToggle($("infiniteBtn"), false);
+        setToggle($("muteDryBtn"), false);
+
+        uiToParams();
+      }
+
+      function resizeCanvas() {
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(canvas.clientWidth * ratio);
+        canvas.height = Math.floor(canvas.clientHeight * ratio);
+      }
+
+      function drawViz() {
+        requestAnimationFrame(drawViz);
+
+        if (!analyser) return;
+
+        const w = canvas.width;
+        const h = canvas.height;
+
+        if (w === 0 || h === 0) return;
+
+        if (!vizData) {
+          vizData = new Uint8Array(analyser.frequencyBinCount);
+        }
+
+        analyser.getByteFrequencyData(vizData);
+
+        g2d.fillStyle = "rgba(3, 4, 8, 0.32)";
+        g2d.fillRect(0, 0, w, h);
+
+        const cx = w / 2;
+        const cy = h / 2;
+        const minDim = Math.min(w, h);
+        const radius = minDim * 0.16;
+        const bars = 170;
+
+        let avg = 0;
+
+        for (let i = 0; i < bars; i++) {
+          const binIndex = Math.floor((i / bars) * vizData.length * 0.72);
+          const v = vizData[binIndex] / 255;
+          avg += v;
+
+          const angle = (i / bars) * Math.PI * 2;
+          const len = v * minDim * 0.30;
+          const hue = 245 + v * 90;
+
+          g2d.strokeStyle = "hsla(" + hue + ", 90%, " + (42 + v * 34) + "%, 0.78)";
+          g2d.lineWidth = Math.max(1, w / 1100);
+
+          g2d.beginPath();
+          g2d.moveTo(
+            cx + Math.cos(angle) * radius,
+            cy + Math.sin(angle) * radius
+          );
+          g2d.lineTo(
+            cx + Math.cos(angle) * (radius + len),
+            cy + Math.sin(angle) * (radius + len)
+          );
+          g2d.stroke();
+        }
+
+        avg /= bars;
+
+        const glowRadius = radius + avg * minDim * 0.24;
+        const gradient = g2d.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
+        gradient.addColorStop(0, "rgba(124, 58, 237, " + (0.10 + avg * 0.30) + ")");
+        gradient.addColorStop(0.55, "rgba(34, 211, 238, " + (0.04 + avg * 0.14) + ")");
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+        g2d.fillStyle = gradient;
+        g2d.beginPath();
+        g2d.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+        g2d.fill();
+      }
+
+      function startViz() {
+        if (vizStarted) return;
+        vizStarted = true;
+        resizeCanvas();
+        drawViz();
+      }
+
+      async function initAudio() {
+        if (!window.isSecureContext) {
+          throw new Error("This application must be served over HTTPS or localhost.");
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Microphone access is not supported in this browser.");
+        }
+
+        if (!window.AudioWorkletNode) {
+          throw new Error("AudioWorklet is not supported in this browser.");
+        }
+
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+          latencyHint: "interactive"
+        });
+
+        const blob = new Blob([WORKLET_CODE], { type: "application/javascript" });
+        const blobUrl = URL.createObjectURL(blob);
+
+        try {
+          await audioCtx.audioWorklet.addModule(blobUrl);
+        } finally {
+          URL.revokeObjectURL(blobUrl);
+        }
+
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
+        } catch (err) {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+
+        const source = audioCtx.createMediaStreamSource(micStream);
+
+        try {
+          workletNode = new AudioWorkletNode(audioCtx, "blackhole-processor", {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [2],
+            channelCount: 1,
+            channelCountMode: "explicit"
+          });
+        } catch (err) {
+          workletNode = new AudioWorkletNode(audioCtx, "blackhole-processor");
+        }
+
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.82;
+
+        const compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.value = -18;
+        compressor.knee.value = 22;
+        compressor.ratio.value = 8;
+        compressor.attack.value = 0.003;
+        compressor.release.value = 0.25;
+
+        source.connect(workletNode);
+        workletNode.connect(analyser);
+        analyser.connect(compressor);
+        compressor.connect(audioCtx.destination);
+
+        sendParams();
+        await audioCtx.resume();
+
+        powered = true;
+        setToggle($("powerBtn"), true);
+      }
+
+      document.querySelectorAll('input[type="range"]').forEach((el) => {
+        el.addEventListener("input", uiToParams);
+      });
+
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          applyPreset(button.dataset.preset);
+        });
+      });
+
+      $("startBtn").addEventListener("click", async function () {
+        if (started) return;
+
+        const button = this;
+        button.disabled = true;
+        setStatus("Initializing audio engine...");
+
+        try {
+          await initAudio();
+          started = true;
+          $("overlay").style.display = "none";
+          startViz();
+        } catch (err) {
+          button.disabled = false;
+          setStatus("Unable to start: " + err.message);
+          console.error(err);
+        }
+      });
+
+      $("powerBtn").addEventListener("click", async function () {
+        if (!audioCtx) return;
+
+        if (audioCtx.state === "running") {
+          await audioCtx.suspend();
+          powered = false;
+        } else {
+          await audioCtx.resume();
+          powered = true;
+        }
+
+        setToggle(this, powered);
+      });
+
+      $("freezeBtn").addEventListener("click", function () {
+        params.freeze = params.freeze ? 0 : 1;
+        setToggle(this, params.freeze);
+        sendParams();
+      });
+
+      $("infiniteBtn").addEventListener("click", function () {
+        params.infinite = params.infinite ? 0 : 1;
+        setToggle(this, params.infinite);
+        sendParams();
+      });
+
+      $("muteDryBtn").addEventListener("click", function () {
+        params.muteDry = params.muteDry ? 0 : 1;
+        setToggle(this, params.muteDry);
+        sendParams();
+      });
+
+      $("clearBtn").addEventListener("click", function () {
+        if (!workletNode) return;
+        workletNode.port.postMessage({ type: "clear" });
+      });
+
+      window.addEventListener("resize", resizeCanvas);
+
+      updateLabels();
+    })();
+  </script>
+</body>
+</html>
